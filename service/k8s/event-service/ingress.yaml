@@ -3,10 +3,8 @@ kind: Ingress
 metadata:
   name: event-service
   namespace: ticket-master
-  annotations:
-    # userdata.sh installs NGINX ingress with hostNetwork; use nginx not traefik
-    kubernetes.io/ingress.class: nginx
 spec:
+  ingressClassName: nginx
   rules:
     - http:
         paths:
