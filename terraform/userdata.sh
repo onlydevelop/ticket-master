@@ -6,8 +6,10 @@ set -x
 # ── k3s single-node install ──────────────────────────────────────────────────
 # --disable servicelb: skip the built-in load balancer; NGINX ingress will
 #   use hostNetwork instead, binding directly to the node's public IP
+# --tls-san: include the public hostname so the API cert is valid for remote kubectl
 curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server \
-  --disable=servicelb" sh -
+  --disable=servicelb \
+  --tls-san=ticket-master.onlydevelop.net" sh -
 
 echo "k3s installed, waiting for node to be Ready..."
 until k3s kubectl get nodes 2>/dev/null | grep -q " Ready"; do sleep 5; done
