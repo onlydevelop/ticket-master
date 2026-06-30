@@ -108,6 +108,11 @@ jobs:
           echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
           chmod 600 ~/.kube/config
 
+      - name: Debug kubeconfig
+        run: |
+          echo "File size: $(wc -c < ~/.kube/config)"
+          head -5 ~/.kube/config
+
       - name: Create namespace
         run: kubectl apply -f service/k8s/shared/namespace.yaml
 
