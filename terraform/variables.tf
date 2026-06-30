@@ -11,7 +11,7 @@ variable "instance_type" {
 }
 
 variable "my_ip_cidr" {
-  description = "Your public IPv6 address in CIDR notation (e.g. 2001:db8::1/128) — restricts SSH inbound"
+  description = "Your public IPv4 address in CIDR notation (e.g. 1.2.3.4/32) — restricts SSH inbound"
   type        = string
 }
 
