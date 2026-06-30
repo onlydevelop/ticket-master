@@ -108,15 +108,3 @@ ssh ubuntu@ticket-master.onlydevelop.net \
 ```
 
 The EC2 instance is provisioned by `terraform/`. Run `terraform apply` once; subsequent deploys are fully automated by CI.
-
-## Out of scope (below the line)
-
-The following are explicitly not built. They are valid v2 additions but would increase complexity without demonstrating new correctness properties at this scale:
-
-- **Virtual waiting queue** — for high-demand events; adds a Redis queue + SSE fan-out
-- **Elasticsearch** — replaced here by Postgres full-text search (tsvector/GIN), which is sufficient at this scale
-- **Redis distributed lock** — `SELECT … FOR UPDATE` is simpler and correct for a single-DB setup
-- **CDC pipeline / Debezium** — not needed without event sourcing or a separate read model
-- **SSE real-time seat map updates** — would require a pub/sub layer
-- **Real payment gateway** — `POST /bookings/pay` is a stub; integrate Stripe/Razorpay in v2
-- **Dynamic pricing** — simple fixed `price_cents` per ticket
