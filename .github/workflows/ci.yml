@@ -107,8 +107,13 @@ jobs:
       - name: Configure kubeconfig
         run: |
           mkdir -p /home/runner/.kube
+          if [ -z "${{ secrets.KUBECONFIG_B64 }}" ]; then
+            echo "ERROR: KUBECONFIG_B64 secret is not set"; exit 1
+          fi
           echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > /home/runner/.kube/config
           chmod 600 /home/runner/.kube/config
+          echo "Config written ($(wc -c < /home/runner/.kube/config) bytes)"
+          grep "server:" /home/runner/.kube/config
           kubectl cluster-info
 
       - name: Create namespace
