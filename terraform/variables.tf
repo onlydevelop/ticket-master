@@ -18,4 +18,5 @@ variable "my_ip_cidr" {
 variable "key_pair_name" {
   description = "Name of an existing EC2 key pair in ap-south-1 for SSH access (create manually before apply)"
   type        = string
+  default     = "ap-south-1"
 }

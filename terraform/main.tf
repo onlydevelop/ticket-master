@@ -31,9 +31,11 @@ resource "aws_vpc" "main" {
 resource "aws_subnet" "ipv6" {
   vpc_id                          = aws_vpc.main.id
   ipv6_cidr_block                 = cidrsubnet(aws_vpc.main.ipv6_cidr_block, 8, 0)
-  ipv6_native                     = true
-  assign_ipv6_address_on_creation = true
-  map_public_ip_on_launch         = false
+  ipv6_native                              = true
+  assign_ipv6_address_on_creation          = true
+  map_public_ip_on_launch                  = false
+  # IPv6-native subnets must have AAAA DNS records enabled; AWS rejects false here
+  enable_resource_name_dns_aaaa_record_on_launch = true
   availability_zone               = "${var.region}a"
 
   tags = { Name = "k8s-dev-subnet-ipv6" }
