@@ -99,6 +99,16 @@ jobs:
             ${{ env.IMAGE_PREFIX }}/booking-service:latest
             ${{ env.IMAGE_PREFIX }}/booking-service:sha-${{ github.sha }}
 
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: service/frontend
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/frontend:latest
+            ${{ env.IMAGE_PREFIX }}/frontend:sha-${{ github.sha }}
+
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: build-push
@@ -167,6 +177,8 @@ jobs:
         run: |
           kubectl apply -f service/k8s/event-service/
           kubectl apply -f service/k8s/booking-service/
-          kubectl -n ticket-master rollout restart deployment/event-service deployment/booking-service
+          kubectl apply -f service/k8s/frontend/
+          kubectl -n ticket-master rollout restart deployment/event-service deployment/booking-service deployment/frontend
           kubectl -n ticket-master rollout status deployment/event-service --timeout=120s
           kubectl -n ticket-master rollout status deployment/booking-service --timeout=120s
+          kubectl -n ticket-master rollout status deployment/frontend --timeout=120s
