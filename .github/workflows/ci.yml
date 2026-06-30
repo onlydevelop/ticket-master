@@ -103,15 +103,13 @@ jobs:
         uses: azure/setup-kubectl@v4
 
       - name: Configure kubeconfig
+        env:
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
         run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
-          chmod 600 ~/.kube/config
-
-      - name: Debug kubeconfig
-        run: |
-          echo "File size: $(wc -c < ~/.kube/config)"
-          head -5 ~/.kube/config
+          mkdir -p /home/runner/.kube
+          printf '%s' "$KUBECONFIG_DATA" > /home/runner/.kube/config
+          chmod 600 /home/runner/.kube/config
+          echo "KUBECONFIG=/home/runner/.kube/config" >> $GITHUB_ENV
 
       - name: Create namespace
         run: kubectl apply -f service/k8s/shared/namespace.yaml
