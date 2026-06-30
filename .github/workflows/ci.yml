@@ -109,6 +109,7 @@ jobs:
           KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
         run: |
           mkdir -p /home/runner/.kube
+          echo "Secret length: ${#KUBECONFIG_B64}"
           if [ -z "$KUBECONFIG_B64" ]; then
             echo "ERROR: KUBECONFIG_B64 secret is not set"; exit 1
           fi
