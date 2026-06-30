@@ -3,7 +3,7 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /booking-service .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o /booking-service .
 
 FROM gcr.io/distroless/static-debian12
 COPY --from=build /booking-service /booking-service
