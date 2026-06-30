@@ -3,10 +3,18 @@ import * as api from './api'
 
 // ── Session user ID ───────────────────────────────────────────────────────
 
+function generateUUID() {
+  // crypto.randomUUID() requires HTTPS; this fallback works over HTTP too
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16)
+  })
+}
+
 function getOrCreateUserId() {
   const KEY = 'tm_user_id'
   let id = sessionStorage.getItem(KEY)
-  if (!id) { id = crypto.randomUUID(); sessionStorage.setItem(KEY, id) }
+  if (!id) { id = generateUUID(); sessionStorage.setItem(KEY, id) }
   return id
 }
 const USER_ID = getOrCreateUserId()
