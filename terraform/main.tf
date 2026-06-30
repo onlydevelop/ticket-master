@@ -85,6 +85,15 @@ resource "aws_security_group" "k8s" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # k8s API server — open to 0.0.0.0/0 because GitHub Actions runners use
+  # dynamic IPs; restrict to your own IP for non-CI access if desired
+  ingress {
+    from_port   = 6443
+    to_port     = 6443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0

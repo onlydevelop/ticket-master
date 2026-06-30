@@ -102,19 +102,52 @@ jobs:
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
 
-      - name: Deploy to k3s
-        env:
-          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
+      - name: Configure kubeconfig
         run: |
           mkdir -p ~/.kube
-          echo "$KUBECONFIG_DATA" > ~/.kube/config
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
           chmod 600 ~/.kube/config
-          kubectl apply -f service/k8s/shared/namespace.yaml
-          kubectl apply -f service/k8s/shared/migrate-job.yaml
+
+      - name: Create namespace
+        run: kubectl apply -f service/k8s/shared/namespace.yaml
+
+      - name: Sync db-credentials secret
+        run: |
+          kubectl -n ticket-master create secret generic db-credentials \
+            --from-literal=password="${{ secrets.DB_PASSWORD }}" \
+            --from-literal=dsn="postgresql://ticketmaster:${{ secrets.DB_PASSWORD }}@postgres:5432/ticketmaster" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Sync ghcr-pull-secret
+        run: |
+          kubectl -n ticket-master create secret docker-registry ghcr-pull-secret \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password="${{ secrets.GHCR_PAT }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Sync migrations ConfigMap
+        run: |
+          kubectl -n ticket-master create configmap db-migrations \
+            --from-file=service/migrations/ \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy postgres and wait
+        run: |
           kubectl apply -f service/k8s/postgres/
+          kubectl -n ticket-master rollout status deployment/postgres --timeout=120s
+
+      - name: Run database migrations
+        run: |
+          # Jobs are immutable; delete the previous run before reapplying
+          kubectl -n ticket-master delete job db-migrate --ignore-not-found
+          kubectl apply -f service/k8s/shared/migrate-job.yaml
+          kubectl -n ticket-master wait --for=condition=complete job/db-migrate --timeout=120s
+
+      - name: Deploy services
+        run: |
           kubectl apply -f service/k8s/event-service/
           kubectl apply -f service/k8s/booking-service/
-          # Restart deployments to pick up the new :latest image
           kubectl -n ticket-master rollout restart deployment/event-service deployment/booking-service
           kubectl -n ticket-master rollout status deployment/event-service --timeout=120s
           kubectl -n ticket-master rollout status deployment/booking-service --timeout=120s
