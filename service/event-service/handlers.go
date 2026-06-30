@@ -121,6 +121,46 @@ func searchEvents(pool *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
+type Ticket struct {
+	ID         string `json:"id"`
+	Section    string `json:"section"`
+	Row        string `json:"row"`
+	Seat       string `json:"seat"`
+	PriceCents int    `json:"price_cents"`
+	Status     string `json:"status"`
+}
+
+func getEventTickets(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+
+		rows, err := pool.Query(r.Context(), `
+			SELECT id, section, row, seat, price_cents, status
+			FROM tickets
+			WHERE event_id = $1
+			ORDER BY section, row, seat
+		`, id)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		tickets := []Ticket{}
+		for rows.Next() {
+			var t Ticket
+			if err := rows.Scan(&t.ID, &t.Section, &t.Row, &t.Seat, &t.PriceCents, &t.Status); err != nil {
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			tickets = append(tickets, t)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(tickets)
+	}
+}
+
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

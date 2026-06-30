@@ -32,6 +32,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 
 	r.Get("/events/{id}", getEvent(pool))
+	r.Get("/events/{id}/tickets", getEventTickets(pool))
 	r.Get("/events/search", searchEvents(pool))
 
 	addr := ":8080"

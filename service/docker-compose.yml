@@ -46,3 +46,18 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    command: sh -c "npm install --prefer-offline && npm run dev"
+    environment:
+      EVENT_SERVICE_URL:   http://event-service:8080
+      BOOKING_SERVICE_URL: http://booking-service:8081
+    ports:
+      - "5173:5173"
+    depends_on:
+      - event-service
+      - booking-service
