@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ticketmaster
+      POSTGRES_USER: ticketmaster
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "ticketmaster"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: migrate/migrate:v4.17.1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/migrations
+    command:
+      - -path=/migrations
+      - -database=postgresql://ticketmaster:secret@postgres:5432/ticketmaster?sslmode=disable
+      - up
+
+  event-service:
+    build:
+      context: ./event-service
+    environment:
+      DATABASE_URL: postgresql://ticketmaster:secret@postgres:5432/ticketmaster?sslmode=disable
+    ports:
+      - "8080:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  booking-service:
+    build:
+      context: ./booking-service
+    environment:
+      DATABASE_URL: postgresql://ticketmaster:secret@postgres:5432/ticketmaster?sslmode=disable
+    ports:
+      - "8081:8081"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully

@@ -1,0 +1,78 @@
+I want to build a deliberately minimal, working version of the Ticketmaster system 
+from this design (https://www.hellointerview.com/learn/system-design/problem-breakdowns/ticketmaster),
+NOT the full staff-level distributed design — just enough microservices to demonstrate 
+the core booking flow with no double-booking, deployable via CI/CD to k3s, testable 
+locally first on Rancher Desktop.
+
+GOALS
+- Functional requirements only: view events, search events, book tickets (no double booking).
+- Skip: virtual waiting queue, Elasticsearch, CDC pipelines, SSE seat updates, dynamic pricing,
+  payment gateway integration beyond a mocked/stubbed payment step. These are explicitly 
+  out of scope — note them as "below the line" in the README but do not build them.
+- Prioritize correctness of the booking concurrency logic (the interesting part of this 
+  problem) over breadth of services.
+
+TECH STACK
+- Language: Go (use the standard library net/http + a lightweight router like chi, 
+  not a heavy framework; pgx or database/sql for Postgres access)
+- Container registry: GitHub Container Registry (ghcr.io), images named 
+  ghcr.io/<owner>/<repo>/event-service and ghcr.io/<owner>/<repo>/booking-service
+- GitHub Actions auth to GHCR via GITHUB_TOKEN (no separate PAT needed for push)
+
+ARCHITECTURE (keep this minimal — do not add components beyond this list unless I ask)
+- event-service: view + search events (single Postgres-backed REST service; use Postgres 
+  full-text search via tsvector/GIN index for search — NOT Elasticsearch)
+- booking-service: reserve + confirm bookings, owns the no-double-booking guarantee using
+  the "status + expiration time" pattern (ticket states: available / reserved / booked) 
+  with a short transactional check-and-set — no Redis distributed lock, no cron sweep job, 
+  unless I explicitly ask to add that later as a v2
+- single shared Postgres database for both services (per the article's own reasoning: 
+  tightly coupled data, ACID needs, no real benefit to splitting databases here)
+- a thin API gateway or ingress route (k3s Traefik ingress is fine — do not stand up a 
+  separate API gateway service/pod just for this)
+- no message queue, no cache layer, no service mesh — add these only if profiling shows 
+  an actual need, not preemptively
+
+EXPLICIT NON-GOALS / OVER-ENGINEERING GUARDRAILS
+- Do not introduce Kafka, Elasticsearch, Redis, a service mesh, or extra microservices 
+  beyond event-service and booking-service unless I ask.
+- Do not split into more than 2 databases.
+- Do not add Helm if plain k8s manifests (or kustomize at most) will do for this scale.
+- Favor the simplest correct solution for double-booking (DB transaction with optimistic 
+  check on ticket status), not the Redis-lock "great solution" — that's a valid v2 
+  enhancement, not a v1 requirement.
+- Justify any component you add in one sentence: what breaks without it.
+- Avoid premature abstraction in Go — no interfaces or layers (repository/service/handler 
+  splits) beyond what's needed for the test suite to mock the DB; flat package structure 
+  over deeply nested ones.
+
+DELIVERABLES
+1. Two small Go services (event-service, booking-service) with clear REST APIs matching 
+   the article's endpoints (GET /events/:id, GET /events/search, POST /bookings), each 
+   as its own Go module with its own go.mod.
+2. Postgres schema/migrations for Event, Venue, Performer, Ticket, Booking entities 
+   (plain SQL migration files, use golang-migrate or similar — nothing heavier).
+3. Dockerfiles for each service: multi-stage builds producing a static binary on a 
+   distroless or scratch final image.
+4. Plain Kubernetes manifests (Deployment, Service, Ingress, ConfigMap/Secret for DB conn) 
+   organized per-service, designed to run identically on Rancher Desktop's local k3s and 
+   a real k3s cluster — no environment-specific hacks. Image pull from ghcr.io requires 
+   an imagePullSecret if the package is private — include instructions for creating it.
+5. A docker-compose.yml for fast local iteration without k8s (Postgres + both services), 
+   but the actual deployment target is k3s manifests, not compose.
+6. A GitHub Actions CI/CD pipeline (.github/workflows) that: runs go test ./... (including 
+   the booking race condition test), builds and pushes both images to GHCR tagged with 
+   git SHA + latest on merge to main, then deploys to the k3s cluster (assume kubeconfig 
+   is available as a GitHub secret, e.g. via kubectl apply). Keep the pipeline to as few 
+   jobs/steps as needed — no unnecessary stages, no matrix builds unless I ask.
+7. A short README covering: how to run locally on Rancher Desktop (kubectl apply against 
+   the local k3s context, including the GHCR pull secret setup), how the no-double-booking 
+   guarantee works, and what's explicitly out of scope and why.
+
+Include a Go test that spins up concurrent goroutines attempting to book the same ticket 
+to prove only one succeeds — this is the one piece of test coverage that actually matters 
+for this exercise.
+
+Ask me clarifying questions about repo structure (monorepo with two Go modules vs two 
+separate repos) and whether GHCR packages should be public or private before you start 
+generating code.

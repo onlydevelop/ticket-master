@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: event-service
+  namespace: ticket-master
+  annotations:
+    # k3s ships Traefik as the default ingress controller
+    kubernetes.io/ingress.class: traefik
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /events
+            pathType: Prefix
+            backend:
+              service:
+                name: event-service
+                port:
+                  number: 8080

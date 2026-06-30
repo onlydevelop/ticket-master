@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS bookings;
+DROP TABLE IF EXISTS tickets;
+DROP TABLE IF EXISTS event_performers;
+DROP TABLE IF EXISTS events;
+DROP TABLE IF EXISTS performers;
+DROP TABLE IF EXISTS venues;

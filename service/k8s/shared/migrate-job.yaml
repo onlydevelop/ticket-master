@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrate
+  namespace: ticket-master
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox
+          command: ["sh", "-c", "until nc -z postgres 5432; do sleep 2; done"]
+      containers:
+        - name: migrate
+          image: migrate/migrate:v4.17.1
+          args:
+            - -path=/migrations
+            - -database=$(DATABASE_URL)
+            - up
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: dsn
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+      volumes:
+        - name: migrations
+          configMap:
+            name: db-migrations
