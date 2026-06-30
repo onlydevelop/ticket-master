@@ -131,3 +131,19 @@ resource "aws_instance" "k8s" {
 
   tags = { Name = "k8s-dev-node" }
 }
+
+# ── DNS ───────────────────────────────────────────────────────────────────────
+data "aws_route53_zone" "onlydevelop" {
+  name         = "onlydevelop.net"
+  private_zone = false
+}
+
+# A record pointing ticket-master.onlydevelop.net → instance's public IPv4.
+# Note: the public IP changes on stop/start; re-apply Terraform after each restart.
+resource "aws_route53_record" "ticket_master" {
+  zone_id = data.aws_route53_zone.onlydevelop.zone_id
+  name    = "ticket-master.onlydevelop.net"
+  type    = "A"
+  ttl     = 300
+  records = [aws_instance.k8s.public_ip]
+}
