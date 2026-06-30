@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,7 +27,7 @@ type Event struct {
 	ID          string      `json:"id"`
 	Title       string      `json:"title"`
 	Description string      `json:"description"`
-	StartsAt    string      `json:"starts_at"`
+	StartsAt    time.Time   `json:"starts_at"`
 	Venue       Venue       `json:"venue"`
 	Performers  []Performer `json:"performers"`
 }
