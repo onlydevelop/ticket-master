@@ -88,15 +88,25 @@ func searchEvents(pool *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
+		// Convert "word1 word2 word3" → "word1 OR word2 OR word3" so multi-word
+		// queries return events matching ANY term rather than requiring ALL terms.
+		orQuery := strings.Join(strings.Fields(q), " OR ")
+
 		rows, err := pool.Query(r.Context(), `
 			SELECT e.id, e.title, e.description, e.starts_at,
 			       v.id, v.name, v.city, v.country, v.capacity
 			FROM events e
 			JOIN venues v ON v.id = e.venue_id
-			WHERE e.search_vector @@ plainto_tsquery('english', $1)
-			ORDER BY ts_rank(e.search_vector, plainto_tsquery('english', $1)) DESC
+			WHERE e.search_vector @@ websearch_to_tsquery('english', $1)
+			   OR EXISTS (
+			       SELECT 1 FROM event_performers ep
+			       JOIN performers p ON p.id = ep.performer_id
+			       WHERE ep.event_id = e.id
+			         AND to_tsvector('english', p.name) @@ websearch_to_tsquery('english', $1)
+			   )
+			ORDER BY ts_rank(e.search_vector, websearch_to_tsquery('english', $1)) DESC
 			LIMIT 50
-		`, q)
+		`, orQuery)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
