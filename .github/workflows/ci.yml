@@ -126,7 +126,7 @@ jobs:
         run: |
           kubectl -n ticket-master create secret generic db-credentials \
             --from-literal=password="${{ secrets.DB_PASSWORD }}" \
-            --from-literal=dsn="postgresql://ticketmaster:${{ secrets.DB_PASSWORD }}@postgres:5432/ticketmaster" \
+            --from-literal=dsn="postgresql://ticketmaster:${{ secrets.DB_PASSWORD }}@postgres:5432/ticketmaster?sslmode=disable" \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Sync ghcr-pull-secret
