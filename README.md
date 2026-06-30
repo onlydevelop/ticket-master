@@ -6,7 +6,7 @@ A deliberately minimal Ticketmaster-style booking system. Two Go microservices, 
 
 | Service | Port | Endpoints |
 |---------|------|-----------|
-| event-service | 8080 | `GET /events/:id`, `GET /events/search?q=` |
+| event-service | 8080 | `GET /events/{id}`, `GET /events/{id}/tickets`, `GET /events/search?q=` |
 | booking-service | 8081 | `POST /bookings/reserve`, `POST /bookings/confirm`, `POST /bookings/pay` |
 
 ## How the no-double-booking guarantee works
@@ -27,11 +27,21 @@ Then:
 # Search events
 curl "http://localhost:8080/events/search?q=concert"
 
-# Reserve a ticket (use a real ticket UUID from a seeded DB)
+# Get tickets for an event
+curl "http://localhost:8080/events/<uuid>/tickets"
+
+# Reserve a ticket
 curl -X POST http://localhost:8081/bookings/reserve \
   -H "Content-Type: application/json" \
   -d '{"ticket_id":"<uuid>","user_id":"<uuid>"}'
+
+# Confirm a pending reservation
+curl -X POST http://localhost:8081/bookings/confirm \
+  -H "Content-Type: application/json" \
+  -d '{"booking_id":"<uuid>","user_id":"<uuid>"}'
 ```
+
+The frontend dev server runs at http://localhost:5173.
 
 ## Run on Rancher Desktop (local k3s)
 
@@ -79,7 +89,25 @@ Pushing to `main` triggers `.github/workflows/ci.yml`:
 
 1. **test** — runs `go test -race ./...` for both modules against a real Postgres (GitHub Actions service container). The concurrent double-booking test is included here.
 2. **build-push** — builds and pushes both images to GHCR tagged `latest` and `sha-<SHA>`.
-3. **deploy** — applies manifests and rolls out both deployments. Requires a `KUBECONFIG` repository secret containing the kubeconfig for the target k3s cluster.
+3. **deploy** — creates/syncs k8s secrets and the migrations ConfigMap, deploys Postgres, runs the migration Job, then rolls out both services.
+
+### Required GitHub secrets
+
+| Secret | Value |
+|--------|-------|
+| `KUBECONFIG` | Contents of `/etc/rancher/k3s/k3s.yaml` on the EC2 node, with `127.0.0.1` replaced by the server's public hostname |
+| `DB_PASSWORD` | Postgres password for the cluster |
+| `GHCR_PAT` | GitHub PAT with `read:packages` scope (so k3s can pull images from GHCR) |
+
+Extract the kubeconfig after the server is provisioned:
+
+```bash
+ssh ubuntu@ticket-master.onlydevelop.net \
+  "sudo cat /etc/rancher/k3s/k3s.yaml" \
+  | sed 's/127.0.0.1/ticket-master.onlydevelop.net/'
+```
+
+The EC2 instance is provisioned by `terraform/`. Run `terraform apply` once; subsequent deploys are fully automated by CI.
 
 ## Out of scope (below the line)
 
